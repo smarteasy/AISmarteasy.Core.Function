@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\AISmarteasy.Core\AISmarteasy.Core\AISmarteasy.Core.csproj" />
+  </ItemGroup>
+
 </Project>

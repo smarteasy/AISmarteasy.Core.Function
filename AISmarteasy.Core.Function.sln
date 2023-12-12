@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34309.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AISmarteasy.Core.Function", "AISmarteasy.Core.Function\AISmarteasy.Core.Function.csproj", "{6887B8AE-31EC-41C6-825B-BF19EA67F839}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AISmarteasy.Core.Function", "AISmarteasy.Core.Function\AISmarteasy.Core.Function.csproj", "{6887B8AE-31EC-41C6-825B-BF19EA67F839}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AISmarteasy.Core", "..\AISmarteasy.Core\AISmarteasy.Core\AISmarteasy.Core.csproj", "{B82F0D81-15DB-418D-A2EA-8D6153FA8F24}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AISmarteasy.Core.Function.Test", "AISmarteasy.Core.Function.Test\AISmarteasy.Core.Function.Test.csproj", "{3792AF04-D909-46B0-A1EB-12C74C776605}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{B82F0D81-15DB-418D-A2EA-8D6153FA8F24}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B82F0D81-15DB-418D-A2EA-8D6153FA8F24}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B82F0D81-15DB-418D-A2EA-8D6153FA8F24}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3792AF04-D909-46B0-A1EB-12C74C776605}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3792AF04-D909-46B0-A1EB-12C74C776605}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3792AF04-D909-46B0-A1EB-12C74C776605}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3792AF04-D909-46B0-A1EB-12C74C776605}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

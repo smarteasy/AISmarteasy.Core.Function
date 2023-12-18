@@ -7,6 +7,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Attribute\**" />
+    <EmbeddedResource Remove="Attribute\**" />
+    <None Remove="Attribute\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="FunctionRunConfig.cs" />
+    <Compile Remove="NativeFunction.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\AISmarteasy.Core.Prompt\AISmarteasy.Core.Prompt\AISmarteasy.Core.Prompt.csproj" />
     <ProjectReference Include="..\..\AISmarteasy.Core\AISmarteasy.Core\AISmarteasy.Core.csproj" />
   </ItemGroup>
 

@@ -2,35 +2,33 @@
 
 namespace AISmarteasy.Core.Function;
 
-public class Plugin(string name, ILogger logger)
+public class Plugin(string name, ILogger logger) : IPlugin
 {
     public string Name { get; init; } = name;
+    private readonly Dictionary<string, IPluginFunction> _functions = new();
 
-    private readonly ILogger _logger = logger;
-    private readonly Dictionary<string, PluginFunction> _functions = new(StringComparer.OrdinalIgnoreCase);
-
-    public PluginFunction GetFunction(string functionName)
+    public IPluginFunction? GetFunction(string functionName)
     {
         if (!_functions.TryGetValue(functionName, out var function))
         {
             ThrowFunctionNotAvailable(functionName);
         }
 
-        return function!;
+        return function;
     }
 
-    public void AddFunction(PluginFunction function)
+    public void AddFunction(IPluginFunction function)
     {
         Verifier.NotNull(function);
 
         _functions[function.Name] = function;
     }
 
-    public List<PluginFunction> Functions => _functions.Values.ToList();
+    public List<IPluginFunction> Functions => _functions.Values.ToList();
 
     private void ThrowFunctionNotAvailable(string functionName)
     {
-        _logger.LogError("Function not available: {0}", functionName);
+        logger.LogError("Function not available: {0}", functionName);
 
         throw new CoreException($"Function not available {functionName}");
     }

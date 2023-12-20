@@ -1,11 +1,14 @@
 ﻿namespace AISmarteasy.Core.Function;
 
-public abstract class PluginFunction
+public abstract class PluginFunction : IPluginFunction
 {
     public PluginFunctionInfo Info { get; init; }
 
     public string Name => Info.Name;
     public string PluginName => Info.PluginName;
+
+    public abstract Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting, CancellationToken cancellationToken = default);
+
     public string Description => Info.Description;
     
     public IList<ParameterInfo> Parameters { get; set; }
@@ -24,6 +27,4 @@ public abstract class PluginFunction
     : this(string.Empty, string.Empty, string.Empty, true, new List<ParameterInfo>())
     {
     }
-
-    public abstract Task RunAsync(LLMServiceSetting serviceSettings, CancellationToken cancellationToken = default);
 }

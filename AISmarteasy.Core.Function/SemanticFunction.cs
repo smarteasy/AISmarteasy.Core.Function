@@ -7,49 +7,30 @@ public class SemanticFunction(string pluginName, string name, string description
     : PluginFunction(pluginName, name, description, true, new List<ParameterInfo>())
 {
     public IPromptTemplate PromptTemplate { get; } = promptTemplate;
-
-    public override Task RunAsync(LLMServiceSetting serviceSetting, CancellationToken cancellationToken = default)
+    
+    public override async Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting, CancellationToken cancellationToken = default)
     {
-        var kernel = KernelProvider.Kernel;
-        AddDefaultValues(kernel.Context.Variables);
-        return RunAsync(kernel.TextCompletionService, serviceSetting, cancellationToken);
-    }
-
-    public async Task RunAsync(ITextCompletionService textCompletionService, LLMServiceSetting serviceSetting, CancellationToken cancellationToken = default)
-    {
-        Verifier.NotNull(textCompletionService);
+        Verifier.NotNull(serviceConnector);
         Verifier.NotNull(serviceSetting);
 
-        var context = KernelProvider.Kernel.Context;
+        AddDefaultValues(LLMWorkEnv.WorkerContext.Variables);
 
         try
         {
-            if (textCompletionService.ServiceType==AIServiceTypeKind.TextCompletion)
-            {
-                var prompt = await PromptTemplate.RenderAsync(cancellationToken).ConfigureAwait(false);
-                var answer = await textCompletionService.RunAsync(prompt, serviceSetting, cancellationToken).ConfigureAwait(false);
-                context.Variables.Update(answer);
-            }
-            else if (textCompletionService.ServiceType == AIServiceTypeKind.ChatCompletion)
-            {
-                //var prompt = await PromptTemplate.RenderAsync(cancellationToken).ConfigureAwait(false);
-                //var chatHistory = new ChatHistory();
-                //chatHistory.AddUserMessage(prompt);
-                //var chtHistory = await client
-                //    .RunChatCompletionAsync(chatHistory, requestSettings, cancellationToken)
-                //    .ConfigureAwait(false);
-                //context.Variables.Update(chtHistory.Messages[1].Content);
-            }
+            var prompt = await PromptTemplate.RenderAsync(serviceConnector, cancellationToken).ConfigureAwait(false);
+            var chatHistory = new ChatHistory();
+            chatHistory.AddUserMessage(prompt);
+            return await serviceConnector.TextCompletionAsync(chatHistory, serviceSetting, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (!ex.IsCriticalException())
         {
-            logger.LogError(ex, "Semantic function {Plugin}.{Name} execution failed with error {Error}", 
+            logger.LogError(ex, "Semantic function {Plugin}.{Name} execution failed with error {Error}",
                 PluginName, Name, ex.Message);
             throw;
         }
     }
 
-    private void AddDefaultValues(ContextVariableDictionary variables)
+    private void AddDefaultValues(VariableDictionary variables)
     {
         foreach (var parameter in Parameters)
         {
@@ -59,13 +40,4 @@ public class SemanticFunction(string pluginName, string name, string description
             }
         }
     }
-
-    //public static PluginFunction FromSemanticConfig(string pluginName, string functionName, SemanticFunctionConfig functionConfig,
-    //    ILoggerFactory? loggerFactory = null, CancellationToken cancellationToken = default)
-    //{
-    //    Verifier.NotNull(functionConfig);
-    //    Verifier.ParametersUniqueness(functionConfig.PromptTemplate.Parameters);
-
-    //    return new SemanticFunction(functionConfig.PromptTemplate, pluginName, functionName, functionConfig.PromptTemplateConfig.Description, loggerFactory);
-    //}
 }

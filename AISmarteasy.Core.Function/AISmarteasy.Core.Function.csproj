@@ -14,7 +14,6 @@
 
   <ItemGroup>
     <Compile Remove="FunctionRunConfig.cs" />
-    <Compile Remove="NativeFunction.cs" />
   </ItemGroup>
 
   <ItemGroup>

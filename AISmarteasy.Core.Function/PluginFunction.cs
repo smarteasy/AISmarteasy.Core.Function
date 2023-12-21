@@ -7,8 +7,6 @@ public abstract class PluginFunction : IPluginFunction
     public string Name => Info.Name;
     public string PluginName => Info.PluginName;
 
-    public abstract Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting, CancellationToken cancellationToken = default);
-
     public string Description => Info.Description;
     
     public IList<ParameterInfo> Parameters { get; set; }
@@ -26,5 +24,16 @@ public abstract class PluginFunction : IPluginFunction
     protected PluginFunction()
     : this(string.Empty, string.Empty, string.Empty, true, new List<ParameterInfo>())
     {
+    }
+
+    public virtual Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public virtual Task Run()
+    {
+        throw new NotImplementedException();
     }
 }

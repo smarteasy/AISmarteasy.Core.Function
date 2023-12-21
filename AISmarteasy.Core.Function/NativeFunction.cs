@@ -1,65 +1,48 @@
 ﻿using System.Collections.Concurrent;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AISmarteasy.Core.Function;
 
-[DebuggerDisplay("{DebuggerDisplay,nq}")]
-public sealed class NativeFunction : PluginFunction
+public sealed class NativeFunction(string pluginName, string name, string description, IList<ParameterInfo> parameters,Func<Task> skillFunction, ILogger logger)
+    : PluginFunction(pluginName, name, description, false, parameters)
 {
-    internal NativeFunction(string pluginName, string name, string description, IList<ParameterInfo> parameters,
-        Func<LLMRequestSetting?, CancellationToken, Task> delegateFunction, ILogger logger)
-    : base(pluginName, name, description, false, parameters)
-    {
-        _logger = logger;
-        _function = delegateFunction;
-    }
-
-    public static PluginFunction FromNativeMethod(
-        MethodInfo method,
-        object? target = null,
-        string? pluginName = null,
-        ILoggerFactory? loggerFactory = null)
+    public static PluginFunction FromNativeMethod(MethodInfo method, ILogger logger, object? target = null, string? pluginName = null)
     {
         if (!method.IsStatic && target is null)
         {
             throw new ArgumentNullException(nameof(target), "Argument cannot be null for non-static methods");
         }
 
-        var logger = loggerFactory?.CreateLogger(method.DeclaringType ?? typeof(PluginFunction)) ?? NullLogger.Instance;
         var methodDetails = GetMethodDetails(method, target, logger);
 
         return new NativeFunction(pluginName!, methodDetails.Name, methodDetails.Description, methodDetails.Parameters, methodDetails.Function, logger);
     }
 
-    public override Task RunAsync(LLMRequestSetting requestSettings, CancellationToken cancellationToken = default)
+    public override Task Run()
     {
         try
         {
-            return _function(requestSettings, cancellationToken);
+            return skillFunction();
         }
         catch (Exception e) when (!e.IsCriticalException())
         {
-            _logger.LogError(e, "Native function {Plugin}.{Name} execution failed with error {Error}", PluginName, Name, e.Message);
+            logger.LogError(e, "Native function {Plugin}.{Name} execution failed with error {Error}", PluginName, Name, e.Message);
             throw;
         }
     }
 
-    private readonly Func<LLMRequestSetting?, CancellationToken, Task> _function;
-    private readonly ILogger _logger;
 
     private struct MethodDetails
     {
         public List<ParameterInfo> Parameters { get; set; }
         public string Name { get; init; }
         public string Description { get; init; }
-        public Func<LLMRequestSetting?, CancellationToken, Task> Function { get; set; }
+        public Func<Task> Function { get; set; }
     }
 
     private static MethodDetails GetMethodDetails(MethodInfo method, object? target, ILogger? logger = null)
@@ -118,20 +101,20 @@ public sealed class NativeFunction : PluginFunction
         return false;
     }
 
-    private static (Func<LLMRequestSetting?, CancellationToken, Task> function, List<ParameterInfo>) GetDelegateInfo(object? instance, MethodInfo method)
+    private static (Func<Task> function, List<ParameterInfo>) GetDelegateInfo(object? instance, MethodInfo method)
     {
         ThrowForInvalidSignatureIf(method.IsGenericMethodDefinition, method, "Generic methods are not supported");
 
         var stringParameterViews = new List<ParameterInfo>();
         var parameters = method.GetParameters();
 
-        var parameterFuncs = new Func<IContext, CancellationToken, object?>[parameters.Length];
-        bool sawFirstParameter = false, hasSKContextParam = false, hasCancellationTokenParam = false, hasLoggerParam = false, hasCultureParam = false;
+        var parameterFuncs = new Func<IWorkerContext,object?>[parameters.Length];
+        bool sawFirstParameter = false, hasContextParam = false, hasLoggerParam = false, hasCultureParam = false;
         for (int i = 0; i < parameters.Length; i++)
         {
-            (parameterFuncs[i], ParameterInfo? parameterView) = GetParameterMarshalerDelegate(
-                method, parameters[i],
-                ref sawFirstParameter, ref hasSKContextParam, ref hasCancellationTokenParam, ref hasLoggerParam, ref hasCultureParam);
+            (parameterFuncs[i], ParameterInfo? parameterView) = GetParameterMarshalerDelegate(method, parameters[i],
+                ref sawFirstParameter, ref hasContextParam, ref hasLoggerParam, ref hasCultureParam);
+
             if (parameterView is not null)
             {
                 stringParameterViews.Add(parameterView);
@@ -140,14 +123,13 @@ public sealed class NativeFunction : PluginFunction
 
         Func<object?, Task> returnFunc = GetReturnValueMarshalerDelegate(method);
 
-        Task Function(LLMRequestSetting? _, CancellationToken cancellationToken)
+        Task Function()
         {
             object?[] args = parameterFuncs.Length != 0 ? new object?[parameterFuncs.Length] : Array.Empty<object?>();
-            var context = KernelProvider.Kernel!.Context;
             
             for (var i = 0; i < args.Length; i++)
             {
-                args[i] = parameterFuncs[i](context, cancellationToken);
+                args[i] = parameterFuncs[i](LLMWorkEnv.WorkerContext);
             }
 
             object? result = method.Invoke(instance, args);
@@ -164,37 +146,28 @@ public sealed class NativeFunction : PluginFunction
         return (Function, stringParameterViews);
     }
 
-    private static (Func<IContext, CancellationToken, object?>, ParameterInfo?) GetParameterMarshalerDelegate(
-        MethodInfo method, System.Reflection.ParameterInfo parameter,
-        ref bool sawFirstParameter, ref bool hasSKContextParam, ref bool hasCancellationTokenParam, ref bool hasLoggerParam, ref bool hasCultureParam)
+    private static (Func<IWorkerContext, object?>, ParameterInfo?) GetParameterMarshalerDelegate(
+        MethodInfo method, System.Reflection.ParameterInfo parameter, ref bool sawFirstParameter, ref bool hasContextParam, ref bool hasLoggerParam, ref bool hasCultureParam)
     {
         Type type = parameter.ParameterType;
 
 
-        if (type == typeof(IContext))
+        if (type == typeof(IWorkerContext))
         {
-            TrackUniqueParameterType(ref hasSKContextParam, method, $"At most one {nameof(IContext)} parameter is permitted.");
-            return (static (context, _) => context, null);
+            TrackUniqueParameterType(ref hasContextParam, method, $"At most one {nameof(IWorkerContext)} parameter is permitted.");
+            return (static (context) => context, null);
         }
 
-        if (type == typeof(ILogger) || type == typeof(ILoggerFactory))
+        if (type == typeof(ILogger))
         {
             TrackUniqueParameterType(ref hasLoggerParam, method, $"At most one {nameof(ILogger)}/{nameof(ILoggerFactory)} parameter is permitted.");
-            return type == typeof(ILogger) ?
-                ((context, _) => context.LoggerFactory.CreateLogger(method.DeclaringType ?? typeof(Function)), null) :
-                ((context, _) => context.LoggerFactory, null);
+            return (static (context) => context, null);
         }
 
         if (type == typeof(CultureInfo) || type == typeof(IFormatProvider))
         {
             TrackUniqueParameterType(ref hasCultureParam, method, $"At most one {nameof(CultureInfo)}/{nameof(IFormatProvider)} parameter is permitted.");
-            return (static (context, _) => context.Culture, null);
-        }
-
-        if (type == typeof(CancellationToken))
-        {
-            TrackUniqueParameterType(ref hasCancellationTokenParam, method, $"At most one {nameof(CancellationToken)} parameter is permitted.");
-            return (static (_, cancellationToken) => cancellationToken, null);
+            return (static (context) => context.Culture, null);
         }
 
         if (!type.IsByRef && GetParser(type) is { } parser)
@@ -235,7 +208,7 @@ public sealed class NativeFunction : PluginFunction
 
             bool fallBackToInput = !sawFirstParameter && !nameIsInput;
 
-            object? ParameterFunc(IContext context, CancellationToken _)
+            object? ParameterFunc(IWorkerContext context)
             {
                 if (context.Variables.TryGetValue(name, out string? value))
                 {
@@ -287,8 +260,6 @@ public sealed class NativeFunction : PluginFunction
 
     private static Func<object?, Task> GetReturnValueMarshalerDelegate(MethodInfo method)
     {
-        Verifier.NotNull(KernelProvider.Kernel);
-
         Type returnType = method.ReturnType;
 
         if (returnType == typeof(Task))
@@ -311,7 +282,7 @@ public sealed class NativeFunction : PluginFunction
         {
             return (result) =>
             {
-                var context = KernelProvider.Kernel.Context;
+                var context = LLMWorkEnv.WorkerContext;
                 context.Variables.Update((string?)result);
                 return Task.FromResult(context);
             };
@@ -321,7 +292,7 @@ public sealed class NativeFunction : PluginFunction
         {
             return async static (result) =>
             {
-                var context = KernelProvider.Kernel.Context;
+                var context = LLMWorkEnv.WorkerContext;
                 context.Variables.Update(await ((Task<string>)ThrowIfNullResult(result)).ConfigureAwait(false));
             };
         }
@@ -330,7 +301,7 @@ public sealed class NativeFunction : PluginFunction
         {
             return async static (result) =>
             {
-                var context = KernelProvider.Kernel.Context;
+                var context = LLMWorkEnv.WorkerContext;
                 context.Variables.Update(await ((ValueTask<string>)ThrowIfNullResult(result)).ConfigureAwait(false));
             };
         }
@@ -345,7 +316,7 @@ public sealed class NativeFunction : PluginFunction
 
             return (result) =>
             {
-                var context = KernelProvider.Kernel.Context;
+                var context = LLMWorkEnv.WorkerContext;
                 context.Variables.Update(formatter(result, context.Culture));
                 return Task.FromResult(context);
             };
@@ -358,7 +329,7 @@ public sealed class NativeFunction : PluginFunction
         {
             return async (result) =>
             {
-                var context = KernelProvider.Kernel.Context;
+                var context = LLMWorkEnv.WorkerContext;
                 await ((Task)ThrowIfNullResult(result)).ConfigureAwait(false);
                 context.Variables.Update(taskResultFormatter(taskResultGetter.Invoke(result!, Array.Empty<object>()), context.Culture));
             };
@@ -372,7 +343,7 @@ public sealed class NativeFunction : PluginFunction
         {
             return async (result) =>
             {
-                var context = KernelProvider.Kernel.Context;
+                var context = LLMWorkEnv.WorkerContext;
                 var task = (Task)valueTaskAsTask.Invoke(ThrowIfNullResult(result), Array.Empty<object>())!;
                 await task.ConfigureAwait(false);
                 context.Variables.Update(asTaskResultFormatter(asTaskResultGetter.Invoke(task, Array.Empty<object>()), context.Culture));
@@ -504,9 +475,6 @@ public sealed class NativeFunction : PluginFunction
 
         return null;
     }
-
-    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    private string DebuggerDisplay => $"{this.Name} ({this.Description})";
 
     private static string SanitizeMetadataName(string? methodName) =>
         InvalidNameCharsRegex.Replace(methodName!, "_");

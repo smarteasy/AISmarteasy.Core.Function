@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AISmarteasy.Core.Function;
 
@@ -25,15 +26,29 @@ public class PluginStore(ILogger logger) : IPluginStore
 
     public void Register(SemanticFunctionConfig config)
     {
-        Verifier.ValidPluginName(config.PluginName);
-        Verifier.ValidFunctionName(config.FunctionName);
-
+        ValidateFunction(config.PluginName, config.FunctionName);
         var function = CreateSemanticFunction(config);
+        RegisterPluginFunction(function);
+    }
+    public void Register(IPluginFunction function)
+    {
+        ValidateFunction(function.PluginName, function.Name);
+        RegisterPluginFunction(function);
+    }
 
-        if (!Plugins.TryGetValue(config.PluginName, out var plugin))
+    private void ValidateFunction(string pluginName, string functionName)
+    {
+        Verifier.ValidPluginName(pluginName);
+        Verifier.ValidFunctionName(functionName);
+    }
+
+    private void RegisterPluginFunction(IPluginFunction function)
+    {
+        string pluginName = function.PluginName;
+        if (!Plugins.TryGetValue(pluginName, out var plugin))
         {
-            plugin = new Plugin(config.PluginName, logger);
-            Plugins.Add(config.PluginName, plugin);
+            plugin = new Plugin(pluginName, logger);
+            Plugins.Add(pluginName, plugin);
         }
 
         plugin.AddFunction(function);

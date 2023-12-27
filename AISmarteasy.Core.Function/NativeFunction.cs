@@ -45,7 +45,7 @@ public sealed class NativeFunction(string pluginName, string name, string descri
         public Func<Task> Function { get; set; }
     }
 
-    private static MethodDetails GetMethodDetails(MethodInfo method, object? target, ILogger? logger = null)
+    private static MethodDetails GetMethodDetails(MethodInfo method, object? target, ILogger logger)
     {
         Verifier.NotNull(method);
 
@@ -75,7 +75,7 @@ public sealed class NativeFunction(string pluginName, string name, string descri
 
         (result.Function, result.Parameters) = GetDelegateInfo(target, method);
 
-        logger?.LogTrace("Method '{0}' found", result.Name);
+        logger.LogTrace("Method '{0}' found", result.Name);
 
         return result;
     }

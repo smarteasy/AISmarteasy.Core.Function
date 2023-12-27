@@ -1,17 +1,11 @@
 ﻿using Azure;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AISmarteasy.Core.Function;
 
-public abstract class AIServiceConnector : IAIServiceConnector
+public abstract class AIServiceConnector(ILogger logger) : IAIServiceConnector
 {
-    protected ILogger Logger { get; set; }
-
-    protected AIServiceConnector(ILogger? logger = null)
-    {
-        Logger = logger ?? NullLogger.Instance;
-    }
+    protected ILogger Logger { get; set; } = logger;
 
     public abstract Task<ChatHistory> TextCompletionAsync(ChatHistory chatHistory, LLMServiceSetting requestSetting, CancellationToken cancellationToken = default);
 

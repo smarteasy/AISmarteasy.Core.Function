@@ -5,6 +5,9 @@ namespace AISmarteasy.Core.Function;
 public class Plugin(string name, ILogger logger) : IPlugin
 {
     public string Name { get; init; } = name;
+
+    public List<IPluginFunction> Functions => _functions.Values.ToList();
+
     private readonly Dictionary<string, IPluginFunction> _functions = new();
 
     public IPluginFunction? GetFunction(string functionName)
@@ -23,8 +26,6 @@ public class Plugin(string name, ILogger logger) : IPlugin
 
         _functions[function.Name] = function;
     }
-
-    public List<IPluginFunction> Functions => _functions.Values.ToList();
 
     private void ThrowFunctionNotAvailable(string functionName)
     {

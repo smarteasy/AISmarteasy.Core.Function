@@ -1,11 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AISmarteasy.Core.Function;
 
 public class PluginStore(ILogger logger) : IPluginStore
 {
     public Dictionary<string, IPlugin> Plugins { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<SemanticFunctionCategory> SemanticFunctionCategories { get; } = new();
 
     public IPluginFunction? FindFunction(string pluginName, string functionName)
     {
@@ -28,11 +28,6 @@ public class PluginStore(ILogger logger) : IPluginStore
     {
         ValidateFunction(config.PluginName, config.FunctionName);
         var function = CreateSemanticFunction(config);
-        RegisterPluginFunction(function);
-    }
-    public void Register(IPluginFunction function)
-    {
-        ValidateFunction(function.PluginName, function.Name);
         RegisterPluginFunction(function);
     }
 
@@ -62,5 +57,23 @@ public class PluginStore(ILogger logger) : IPluginStore
         }
 
         return new SemanticFunction(config.PluginName, config.FunctionName, config.PromptTemplateConfig.Description, config.PromptTemplate, logger);
+    }
+
+    public void BuildSemanticFunctionCategory()
+    {
+        foreach (var plugin in Plugins.Values)
+        {
+            var categoryName = plugin.Name;
+            var category = new SemanticFunctionCategory(categoryName, string.Empty, logger);
+            SemanticFunctionCategories.Add(category);
+
+            foreach (var function in plugin.Functions)
+            {
+                var content  = string.Join("\n\n", function.Info.ToManualString());
+                content += "\n\n";
+
+                category.AddSubCategory(new SemanticFunctionCategory(function.Name, content, logger));
+            }
+        }
     }
 }

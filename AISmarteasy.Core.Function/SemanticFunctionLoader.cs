@@ -18,6 +18,8 @@ public static class SemanticFunctionLoader
         Initialize(logger);
         LoadPlugin();
 
+        PluginStore.BuildSemanticFunctionCategory();
+
         return PluginStore;
     }
 

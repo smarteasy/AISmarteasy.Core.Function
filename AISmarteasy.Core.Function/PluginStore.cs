@@ -64,15 +64,15 @@ public class PluginStore(ILogger logger) : IPluginStore
         foreach (var plugin in Plugins.Values)
         {
             var categoryName = plugin.Name;
-            var category = new SemanticFunctionCategory(categoryName, string.Empty, logger);
+            var category = new SemanticFunctionCategory(string.Empty, categoryName, string.Empty, logger);
             SemanticFunctionCategories.Add(category);
 
             foreach (var function in plugin.Functions)
             {
-                var content  = string.Join("\n\n", function.Info.ToManualString());
-                content += "\n\n";
-
-                category.AddSubCategory(new SemanticFunctionCategory(function.Name, content, logger));
+                var fullyQualifiedName = function.ToFullyQualifiedName();
+                var content = function.ToManualString();
+                
+                category.AddSubCategory(new SemanticFunctionCategory(fullyQualifiedName, function.Name, content, logger));
             }
         }
     }

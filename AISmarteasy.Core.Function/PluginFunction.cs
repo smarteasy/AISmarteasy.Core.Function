@@ -36,4 +36,14 @@ public abstract class PluginFunction : IPluginFunction
     {
         throw new NotImplementedException();
     }
+
+    public string ToFullyQualifiedName()
+    {
+        return Info.ToFullyQualifiedName();
+    }
+
+    public string ToManualString()
+    {
+        return Info.ToManualString();
+    }
 }

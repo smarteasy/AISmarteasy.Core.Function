@@ -6,6 +6,7 @@ public abstract class PluginFunction : IPluginFunction
 
     public string Name => Info.Name;
     public string PluginName => Info.PluginName;
+    public bool IsSemantic => Info.IsSemantic;
 
     public string Description => Info.Description;
     
@@ -26,13 +27,10 @@ public abstract class PluginFunction : IPluginFunction
     {
     }
 
-    public virtual Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting,
-        CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
+    public abstract Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting, CancellationToken cancellationToken = default);
 
-    public virtual Task Run()
+    public virtual IAsyncEnumerable<ChatStreamingResult> RunStreamingAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting,
+        CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

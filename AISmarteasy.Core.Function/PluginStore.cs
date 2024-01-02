@@ -30,14 +30,7 @@ public class PluginStore(ILogger logger) : IPluginStore
         var function = CreateSemanticFunction(config);
         RegisterPluginFunction(function);
     }
-
-    private void ValidateFunction(string pluginName, string functionName)
-    {
-        Verifier.ValidPluginName(pluginName);
-        Verifier.ValidFunctionName(functionName);
-    }
-
-    private void RegisterPluginFunction(IPluginFunction function)
+    public void RegisterPluginFunction(IPluginFunction function)
     {
         string pluginName = function.PluginName;
         if (!Plugins.TryGetValue(pluginName, out var plugin))
@@ -47,6 +40,12 @@ public class PluginStore(ILogger logger) : IPluginStore
         }
 
         plugin.AddFunction(function);
+    }
+
+    private void ValidateFunction(string pluginName, string functionName)
+    {
+        Verifier.ValidPluginName(pluginName);
+        Verifier.ValidFunctionName(functionName);
     }
 
     private PluginFunction CreateSemanticFunction(SemanticFunctionConfig config)

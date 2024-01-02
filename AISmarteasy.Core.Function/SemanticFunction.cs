@@ -1,4 +1,5 @@
-﻿using AISmarteasy.Core.Prompt;
+﻿using System.Runtime.CompilerServices;
+using AISmarteasy.Core.Prompt;
 using Microsoft.Extensions.Logging;
 
 namespace AISmarteasy.Core.Function;
@@ -27,6 +28,22 @@ public class SemanticFunction(string pluginName, string name, string description
             logger.LogError(ex, "Semantic function {Plugin}.{Name} execution failed with error {Error}",
                 PluginName, Name, ex.Message);
             throw;
+        }
+    }
+
+    public override async IAsyncEnumerable<ChatStreamingResult> RunStreamingAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Verifier.NotNull(serviceConnector);
+        Verifier.NotNull(serviceSetting);
+
+        var prompt = await PromptTemplate.RenderAsync(serviceConnector, cancellationToken).ConfigureAwait(false);
+        var chatHistory = new ChatHistory();
+        chatHistory.AddUserMessage(prompt);
+
+        await foreach (var chatStreamingResult in serviceConnector.TextCompletionStreamingAsync(chatHistory, serviceSetting, cancellationToken))
+        {
+            yield return chatStreamingResult;
         }
     }
 

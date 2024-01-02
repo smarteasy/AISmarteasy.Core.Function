@@ -8,8 +8,8 @@ using Microsoft.Extensions.Logging;
 
 namespace AISmarteasy.Core.Function;
 
-public sealed class NativeFunction(string pluginName, string name, string description, IList<ParameterInfo> parameters,Func<Task> skillFunction, ILogger logger)
-    : PluginFunction(pluginName, name, description, false, parameters)
+public sealed class NativeFunction(string pluginName, string name, string description, 
+        IList<ParameterInfo> parameters, Func<string> skillFunction, ILogger logger) : PluginFunction(pluginName, name, description, false, parameters)
 {
     public static PluginFunction FromNativeMethod(MethodInfo method, ILogger logger, object? target = null, string? pluginName = null)
     {
@@ -23,11 +23,17 @@ public sealed class NativeFunction(string pluginName, string name, string descri
         return new NativeFunction(pluginName!, methodDetails.Name, methodDetails.Description, methodDetails.Parameters, methodDetails.Function, logger);
     }
 
-    public override Task Run()
+    public override Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            return skillFunction();
+            var functionReturn = skillFunction();
+            var chatHistory = new ChatHistory
+            {
+                PipelineLastContent = functionReturn
+            };
+            return Task.FromResult(chatHistory);
         }
         catch (Exception e) when (!e.IsCriticalException())
         {
@@ -36,13 +42,12 @@ public sealed class NativeFunction(string pluginName, string name, string descri
         }
     }
 
-
     private struct MethodDetails
     {
         public List<ParameterInfo> Parameters { get; set; }
         public string Name { get; init; }
         public string Description { get; init; }
-        public Func<Task> Function { get; set; }
+        public Func<string> Function { get; set; }
     }
 
     private static MethodDetails GetMethodDetails(MethodInfo method, object? target, ILogger logger)
@@ -101,7 +106,7 @@ public sealed class NativeFunction(string pluginName, string name, string descri
         return false;
     }
 
-    private static (Func<Task> function, List<ParameterInfo>) GetDelegateInfo(object? instance, MethodInfo method)
+    private static (Func<string> function, List<ParameterInfo>) GetDelegateInfo(object? instance, MethodInfo method)
     {
         ThrowForInvalidSignatureIf(method.IsGenericMethodDefinition, method, "Generic methods are not supported");
 
@@ -121,9 +126,8 @@ public sealed class NativeFunction(string pluginName, string name, string descri
             }
         }
 
-        Func<object?, Task> returnFunc = GetReturnValueMarshalerDelegate(method);
-
-        Task Function()
+      
+        string Function()
         {
             object?[] args = parameterFuncs.Length != 0 ? new object?[parameterFuncs.Length] : Array.Empty<object?>();
             
@@ -132,9 +136,9 @@ public sealed class NativeFunction(string pluginName, string name, string descri
                 args[i] = parameterFuncs[i](LLMWorkEnv.WorkerContext);
             }
 
-            object? result = method.Invoke(instance, args);
+            var result =(string)method.Invoke(instance, args)!;
 
-            return returnFunc(result);
+            return result;
         }
 
         stringParameterViews.AddRange(method
@@ -256,105 +260,6 @@ public sealed class NativeFunction(string pluginName, string name, string descri
         }
 
         throw GetExceptionForInvalidSignature(method, $"Unknown parameter type {parameter.ParameterType}");
-    }
-
-    private static Func<object?, Task> GetReturnValueMarshalerDelegate(MethodInfo method)
-    {
-        Type returnType = method.ReturnType;
-
-        if (returnType == typeof(Task))
-        {
-            return async static (result) =>
-            {
-                await ((Task)ThrowIfNullResult(result)).ConfigureAwait(false);
-            };
-        }
-
-        if (returnType == typeof(ValueTask))
-        {
-            return async static (result) =>
-            {
-                await ((ValueTask)ThrowIfNullResult(result)).ConfigureAwait(false);
-            };
-        }
-
-        if (returnType == typeof(string))
-        {
-            return (result) =>
-            {
-                var context = LLMWorkEnv.WorkerContext;
-                context.Variables.Update((string?)result);
-                return Task.FromResult(context);
-            };
-        }
-
-        if (returnType == typeof(Task<string>))
-        {
-            return async static (result) =>
-            {
-                var context = LLMWorkEnv.WorkerContext;
-                context.Variables.Update(await ((Task<string>)ThrowIfNullResult(result)).ConfigureAwait(false));
-            };
-        }
-
-        if (returnType == typeof(ValueTask<string>))
-        {
-            return async static (result) =>
-            {
-                var context = LLMWorkEnv.WorkerContext;
-                context.Variables.Update(await ((ValueTask<string>)ThrowIfNullResult(result)).ConfigureAwait(false));
-            };
-        }
-
-        if (!returnType.IsGenericType || returnType.GetGenericTypeDefinition() == typeof(Nullable<>))
-        {
-            var formatter = GetFormatter(returnType) as Func<object?, CultureInfo, string>;
-            if (formatter == null)
-            {
-                throw GetExceptionForInvalidSignature(method, $"Unknown return type {returnType}");
-            }
-
-            return (result) =>
-            {
-                var context = LLMWorkEnv.WorkerContext;
-                context.Variables.Update(formatter(result, context.Culture));
-                return Task.FromResult(context);
-            };
-        }
-
-        if (returnType.GetGenericTypeDefinition() is { } genericTask &&
-            genericTask == typeof(Task<>) &&
-            returnType.GetProperty("Result", BindingFlags.Public | BindingFlags.Instance)?.GetGetMethod() is { } taskResultGetter &&
-            GetFormatter(taskResultGetter.ReturnType) is { } taskResultFormatter)
-        {
-            return async (result) =>
-            {
-                var context = LLMWorkEnv.WorkerContext;
-                await ((Task)ThrowIfNullResult(result)).ConfigureAwait(false);
-                context.Variables.Update(taskResultFormatter(taskResultGetter.Invoke(result!, Array.Empty<object>()), context.Culture));
-            };
-        }
-
-        if (returnType.GetGenericTypeDefinition() is { } genericValueTask &&
-            genericValueTask == typeof(ValueTask<>) &&
-            returnType.GetMethod("AsTask", BindingFlags.Public | BindingFlags.Instance) is { } valueTaskAsTask &&
-            valueTaskAsTask.ReturnType.GetProperty("Result", BindingFlags.Public | BindingFlags.Instance)?.GetGetMethod() is { } asTaskResultGetter &&
-            GetFormatter(asTaskResultGetter.ReturnType) is { } asTaskResultFormatter)
-        {
-            return async (result) =>
-            {
-                var context = LLMWorkEnv.WorkerContext;
-                var task = (Task)valueTaskAsTask.Invoke(ThrowIfNullResult(result), Array.Empty<object>())!;
-                await task.ConfigureAwait(false);
-                context.Variables.Update(asTaskResultFormatter(asTaskResultGetter.Invoke(task, Array.Empty<object>()), context.Culture));
-            };
-        }
-
-        throw GetExceptionForInvalidSignature(method, $"Unknown return type {returnType}");
-
-        static object ThrowIfNullResult(object? result) =>
-            result ??
-            throw new CoreException("Function returned null unexpectedly.");
     }
 
     [DoesNotReturn]

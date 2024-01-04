@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using Azure;
+﻿using Azure;
 using Microsoft.Extensions.Logging;
 
 namespace AISmarteasy.Core.Function;
@@ -8,9 +7,15 @@ public abstract class AIServiceConnector(ILogger logger) : IAIServiceConnector
 {
     protected ILogger Logger { get; set; } = logger;
 
-    public abstract Task<ChatHistory> TextCompletionAsync(ChatHistory chatHistory, LLMServiceSetting requestSetting, CancellationToken cancellationToken = default);
+    public abstract Task<ChatHistory> TextCompletionAsync(ChatHistory chatHistory, LLMServiceSetting requestSetting, 
+        CancellationToken cancellationToken = default);
     public abstract IAsyncEnumerable<ChatStreamingResult> TextCompletionStreamingAsync(ChatHistory chatHistory, LLMServiceSetting requestSetting,
         CancellationToken cancellationToken = default);
+
+    public abstract Task<string> SpeechToTextAsync(List<string> audioFilePaths, 
+        string language = "en", TranscriptionFormatKind transcriptionFormat = TranscriptionFormatKind.SingleTextJson, CancellationToken cancellationToken = default);
+
+    public abstract Task TextToSpeechAsync(TextToSpeechRunRequest request);
 
     protected static async Task<T> RunAsync<T>(Func<Task<T>> request)
     {

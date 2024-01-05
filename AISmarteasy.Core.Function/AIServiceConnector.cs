@@ -16,6 +16,7 @@ public abstract class AIServiceConnector(ILogger logger) : IAIServiceConnector
         string language = "en", TranscriptionFormatKind transcriptionFormat = TranscriptionFormatKind.SingleTextJson, CancellationToken cancellationToken = default);
 
     public abstract Task TextToSpeechAsync(TextToSpeechRunRequest request);
+    public abstract Task<Stream> TextToSpeechStreamAsync(TextToSpeechRunRequest request);
 
     protected static async Task<T> RunAsync<T>(Func<Task<T>> request)
     {

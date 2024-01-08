@@ -12,11 +12,10 @@ public abstract class AIServiceConnector(ILogger logger) : IAIServiceConnector
     public abstract IAsyncEnumerable<ChatStreamingResult> TextCompletionStreamingAsync(ChatHistory chatHistory, LLMServiceSetting requestSetting,
         CancellationToken cancellationToken = default);
 
-    public abstract Task<string> SpeechToTextAsync(List<string> audioFilePaths, 
-        string language = "en", TranscriptionFormatKind transcriptionFormat = TranscriptionFormatKind.SingleTextJson, CancellationToken cancellationToken = default);
+    public abstract Task GenerateAudioAsync(AudioGenerationRequest request);
+    public abstract Task<Stream> GenerateAudioStreamAsync(AudioGenerationRequest request);
 
-    public abstract Task TextToSpeechAsync(TextToSpeechRunRequest request);
-    public abstract Task<Stream> TextToSpeechStreamAsync(TextToSpeechRunRequest request);
+    public abstract Task<string> GenerateImageAsync(ImageGenerationRequest request, CancellationToken cancellationToken = default);
 
     protected static async Task<T> RunAsync<T>(Func<Task<T>> request)
     {
@@ -37,4 +36,13 @@ public abstract class AIServiceConnector(ILogger logger) : IAIServiceConnector
             throw new CoreException($"MaxTokens {maxTokens} is not valid, the value must be greater than zero");
         }
     }
+
+    public Task<string> RunSpeechToTextAsync(SpeechToTextRunRequest request)
+    {
+        throw new NotImplementedException();
+    }
+
+    public abstract Task<string> SpeechToTextAsync(List<string> audioFilePaths,
+        string language = "en", TranscriptionFormatKind transcriptionFormat = TranscriptionFormatKind.SingleTextJson, CancellationToken cancellationToken = default);
+
 }

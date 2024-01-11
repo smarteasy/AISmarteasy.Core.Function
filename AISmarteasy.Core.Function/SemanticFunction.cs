@@ -21,7 +21,7 @@ public class SemanticFunction(string pluginName, string name, string description
             var prompt = await PromptTemplate.RenderAsync(serviceConnector, cancellationToken).ConfigureAwait(false);
             var chatHistory = new ChatHistory();
             chatHistory.AddUserMessage(prompt);
-            return await serviceConnector.TextCompletionAsync(chatHistory, serviceSetting, cancellationToken).ConfigureAwait(false);
+            return await serviceConnector.RunTextCompletionAsync(chatHistory, serviceSetting, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (!ex.IsCriticalException())
         {
@@ -41,7 +41,7 @@ public class SemanticFunction(string pluginName, string name, string description
         var chatHistory = new ChatHistory();
         chatHistory.AddUserMessage(prompt);
 
-        await foreach (var chatStreamingResult in serviceConnector.TextCompletionStreamingAsync(chatHistory, serviceSetting, cancellationToken))
+        await foreach (var chatStreamingResult in serviceConnector.RunTextCompletionStreamingAsync(chatHistory, serviceSetting, cancellationToken))
         {
             yield return chatStreamingResult;
         }

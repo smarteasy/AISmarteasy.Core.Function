@@ -136,7 +136,7 @@ public sealed class NativeFunction(string pluginName, string name, string descri
                 args[i] = parameterFuncs[i](LLMWorkEnv.WorkerContext);
             }
 
-            var result =(string)method.Invoke(instance, args)!;
+            var result = (string)method.Invoke(instance, args)!;
 
             return result;
         }

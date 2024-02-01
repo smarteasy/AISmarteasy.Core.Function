@@ -13,9 +13,9 @@ public static class SemanticFunctionLoader
 
     private static ILogger _logger = NullLogger.Instance;
 
-    public static IPluginStore Load(ILogger logger)
+    public static IPluginStore Load()
     {
-        Initialize(logger);
+        Initialize();
         LoadPlugin();
 
         PluginStore.BuildSemanticFunctionCategory();
@@ -23,12 +23,12 @@ public static class SemanticFunctionLoader
         return PluginStore;
     }
 
-    private static void Initialize(ILogger logger)
+    private static void Initialize()
     {
         _pluginDirectory = Path.Combine(Directory.GetCurrentDirectory(), "plugins", "semantic");
-        _logger = logger;
+        _logger = LoggerProvider.Provide();
 
-        PluginStore = new PluginStore(_logger);
+        PluginStore = new PluginStore();
     }
 
     private static void LoadPlugin()

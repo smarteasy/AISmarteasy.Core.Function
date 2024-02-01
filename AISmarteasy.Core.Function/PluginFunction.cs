@@ -27,9 +27,9 @@ public abstract class PluginFunction : IPluginFunction
     {
     }
 
-    public abstract Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting, CancellationToken cancellationToken = default);
+    public abstract Task<ChatHistory> RunAsync(ITextCompletionConnector serviceConnector, LLMServiceSetting serviceSetting, CancellationToken cancellationToken = default);
 
-    public virtual IAsyncEnumerable<ChatStreamingResult> RunStreamingAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting,
+    public virtual IAsyncEnumerable<ChatStreamingResult> RunStreamingAsync(ITextCompletionConnector serviceConnector, LLMServiceSetting serviceSetting,
         CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();

@@ -1,8 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿namespace AISmarteasy.Core.Function;
 
-namespace AISmarteasy.Core.Function;
-
-public class PluginStore(ILogger logger) : IPluginStore
+public class PluginStore : IPluginStore
 {
     public Dictionary<string, IPlugin> Plugins { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<SemanticFunctionCategory> SemanticFunctionCategories { get; } = new();
@@ -35,7 +33,7 @@ public class PluginStore(ILogger logger) : IPluginStore
         string pluginName = function.PluginName;
         if (!Plugins.TryGetValue(pluginName, out var plugin))
         {
-            plugin = new Plugin(pluginName, logger);
+            plugin = new Plugin(pluginName);
             Plugins.Add(pluginName, plugin);
         }
 
@@ -55,7 +53,7 @@ public class PluginStore(ILogger logger) : IPluginStore
             throw new CoreException($"Function type not supported: {config.PromptTemplateConfig}");
         }
 
-        return new SemanticFunction(config.PluginName, config.FunctionName, config.PromptTemplateConfig.Description, config.PromptTemplate, logger);
+        return new SemanticFunction(config.PluginName, config.FunctionName, config.PromptTemplateConfig.Description, config.PromptTemplate);
     }
 
     public void BuildSemanticFunctionCategory()
@@ -63,7 +61,7 @@ public class PluginStore(ILogger logger) : IPluginStore
         foreach (var plugin in Plugins.Values)
         {
             var categoryName = plugin.Name;
-            var category = new SemanticFunctionCategory(string.Empty, categoryName, string.Empty, logger);
+            var category = new SemanticFunctionCategory(string.Empty, categoryName, string.Empty);
             SemanticFunctionCategories.Add(category);
 
             foreach (var function in plugin.Functions)
@@ -71,7 +69,7 @@ public class PluginStore(ILogger logger) : IPluginStore
                 var fullyQualifiedName = function.ToFullyQualifiedName();
                 var content = function.ToManualString();
                 
-                category.AddSubCategory(new SemanticFunctionCategory(fullyQualifiedName, function.Name, content, logger));
+                category.AddSubCategory(new SemanticFunctionCategory(fullyQualifiedName, function.Name, content));
             }
         }
     }

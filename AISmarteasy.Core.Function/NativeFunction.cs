@@ -23,7 +23,7 @@ public sealed class NativeFunction(string pluginName, string name, string descri
         return new NativeFunction(pluginName!, methodDetails.Name, methodDetails.Description, methodDetails.Parameters, methodDetails.Function, logger);
     }
 
-    public override Task<ChatHistory> RunAsync(IAIServiceConnector serviceConnector, LLMServiceSetting serviceSetting,
+    public override Task<ChatHistory> RunAsync(ITextCompletionConnector serviceConnector, LLMServiceSetting serviceSetting,
         CancellationToken cancellationToken = default)
     {
         try
@@ -31,7 +31,7 @@ public sealed class NativeFunction(string pluginName, string name, string descri
             var functionReturn = skillFunction();
             var chatHistory = new ChatHistory
             {
-                PipelineLastContent = functionReturn
+                new(AuthorRole.Assistant, functionReturn)
             };
             return Task.FromResult(chatHistory);
         }
@@ -137,7 +137,6 @@ public sealed class NativeFunction(string pluginName, string name, string descri
             }
 
             var result = (string)method.Invoke(instance, args)!;
-
             return result;
         }
 

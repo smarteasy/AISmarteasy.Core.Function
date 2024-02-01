@@ -2,7 +2,7 @@
 
 namespace AISmarteasy.Core.Function;
 
-public class Plugin(string name, ILogger logger) : IPlugin
+public class Plugin(string name) : IPlugin
 {
     public string Name { get; init; } = name;
 
@@ -29,8 +29,8 @@ public class Plugin(string name, ILogger logger) : IPlugin
 
     private void ThrowFunctionNotAvailable(string functionName)
     {
+        var logger = LoggerProvider.Provide();
         logger.LogError("Function not available: {0}", functionName);
-
         throw new CoreException($"Function not available {functionName}");
     }
 }
